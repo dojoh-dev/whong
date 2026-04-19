@@ -1,0 +1,14 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# MacOS
+.DS_Store
+._*
