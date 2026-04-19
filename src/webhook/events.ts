@@ -7,8 +7,8 @@ function handlePush(payload: any) {
     .map((c: any) => `@${c.author.name}: ${c.message}`)
     .join("\n");
 
-	discord.channel(BigInt(env("COMMITS_THREAD_ID")))
-		.sendMessage(`💾 Push to ${payload.ref}
+  discord.channel(BigInt(env("COMMITS_THREAD_ID")))
+    .sendMessage(`💾 Push to ${payload.ref}
 ${commits}
 
 > Repo: ${payload.repository.full_name}
@@ -45,7 +45,7 @@ ${issue.html_url}
 function handleWorkflow(payload: any) {
   const run = payload.workflow_run;
 
-  discord.channel(BigInt(env("WORKFLOWS_THREAD_ID"))
+  discord.channel(BigInt(env("WORKFLOWS_THREAD_ID")))
     .sendMessage(`**⚙️ Workflow ${run.display_title}**  (${run.conclusion})
 ${run.html_url}
 
