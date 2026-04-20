@@ -18,15 +18,17 @@ ${commits}
 function handlePR(payload: any) {
   const pr = payload.pull_request;
 
-  discord.channel(BigInt(env("PR_THREAD_ID")))
-    .sendMessage(`**📥 PR ${payload.action}:** ${pr.title}
-${pr.base.ref} <- ${pr.head.ref}
+  if (payload.action === "opened") {
+    discord.channel(BigInt(env("PR_THREAD_ID")))
+      .sendMessage(`**📥 PR ${payload.action}:** ${pr.title}
+(Opened) ${pr.base.ref} <- ${pr.head.ref}
 
 > ID: #${pr.number}
 > Url: ${pr.html_url}
 > Author: @${pr.user.login}
 > Repo: ${payload.repository.full_name}
 `);
+  }
 }
 
 function handleIssue(payload: any) {

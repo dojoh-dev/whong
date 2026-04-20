@@ -117,7 +117,7 @@ export default [
         .setDescription("Manages issues for a specified dojoh repository")
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("lookup")
+            .setName("get")
             .setDescription("Look up an existing GitHub issue")
             .addNumberOption((option) =>
               option
@@ -151,9 +151,16 @@ export default [
             )
             .addStringOption((option) =>
               option
+                .setName("repo")
+                .setDescription("The dojoh repository to create the issue in")
+                .setRequired(true)
+                .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
                 .setName("tags")
                 .setDescription(
-                  "The tags to assign to the issue, example: bug, documentation",
+                  "The tags to assign to the issue, comma separated (example: bug, documentation)",
                 )
                 .setRequired(false),
             )
@@ -164,13 +171,90 @@ export default [
                   "The GitHub username to assign the issue to (defaults to you)",
                 )
                 .setRequired(false),
+            ),
+        )
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("lookup")
+            .setDescription("Get the latest GitHub issues for a repository")
+            .addStringOption((option) =>
+              option
+                .setName("repo")
+                .setDescription(
+                  "The dojoh repository to get the latest issues from",
+                )
+                .setRequired(true)
+                .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("assignee")
+                .setDescription(
+                  "The GitHub username to filter issues by assignee",
+                )
+                .setRequired(false),
+            )
+            .addNumberOption((option) =>
+              option
+                .setName("per_page")
+                .setDescription("The number of issues to return (default: 5)")
+                .setRequired(false),
+            ),
+        )
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("update")
+            .setDescription("Update an existing GitHub issue")
+            .addNumberOption((option) =>
+              option
+                .setName("id")
+                .setDescription("The ID of the issue")
+                .setRequired(true),
             )
             .addStringOption((option) =>
               option
                 .setName("repo")
-                .setDescription("The dojoh repository to create the issue in")
-                .setRequired(false)
+                .setDescription("The dojoh repository the issue is in")
+                .setRequired(true)
                 .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("title")
+                .setDescription("The new title of the issue")
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("description")
+                .setDescription("The new description of the issue")
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("tags")
+                .setDescription(
+                  "The new tags to assign to the issue, comma separated (example: bug, documentation)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("assignees")
+                .setDescription(
+                  "The GitHub usernames to assign the issue to, comma separated (example: user1,user2)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("state")
+                .setDescription("The new state of the issue")
+                .setRequired(false)
+                .addChoices(
+                  { name: "Open", value: "open" },
+                  { name: "Closed", value: "closed" },
+                ),
             ),
         ),
     )
@@ -192,18 +276,18 @@ export default [
             )
             .addStringOption((option) =>
               option
-                .setName("description")
-                .setDescription("The description of the pull request")
-                .setRequired(false),
-            )
-            .addStringOption((option) =>
-              option
                 .setName("repo")
                 .setDescription(
                   "The dojoh repository to create the pull request in",
                 )
                 .setRequired(true)
                 .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("description")
+                .setDescription("The description of the pull request")
+                .setRequired(false),
             ),
         ),
     ),

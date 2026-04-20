@@ -1,4 +1,8 @@
-import type { ChatInputCommandInteraction, CacheType } from "discord.js";
+import {
+  type ChatInputCommandInteraction,
+  type CacheType,
+  MessageFlags,
+} from "discord.js";
 import { Octokit } from "octokit";
 
 import env from "@/config/env";
@@ -94,7 +98,7 @@ I can help with server info, user details, and some Jira and GitHub integrations
     const subcommandGroup = interaction.options.getSubcommandGroup();
 
     // Get whether a single issue or pull request
-    if (subcommandGroup === "issues" && subcommand === "lookup") {
+    if (subcommandGroup === "issues" && subcommand === "get") {
       const issueNumber = interaction.options.getNumber("id", true);
       const repoFullname = interaction.options.getString("repo", true);
 
@@ -160,22 +164,152 @@ I can help with server info, user details, and some Jira and GitHub integrations
       const repoFullname = interaction.options.getString("repo", true);
       const [owner, repo] = repoFullname.split("/");
 
-      const payload = {
+      const { assignee, ...payload } = {
         title: interaction.options.getString("title", true),
         body: interaction.options.getString("description", true),
         tags: interaction.options.getString("tags", false) || "",
-        assignee: interaction.options.getString("assignee", false) || undefined,
+        assignee:
+          interaction.options.getString("assignee", false) ||
+          interaction.user.username,
         owner,
         repo,
       };
 
-      await octokit.rest.issues.create({
-        ...payload,
-        assignees: [payload.assignee].filter(Boolean) as string[],
-        labels: payload.tags
-          ? payload.tags.split(",").map((tag) => tag.trim())
-          : [],
+      try {
+        const { data } = await octokit.rest.issues.create({
+          ...payload,
+          assignees: [assignee].filter(Boolean) as string[],
+          labels: payload.tags
+            ? payload.tags.split(",").map((tag) => tag.trim())
+            : [],
+        });
+
+        await interaction.reply(
+          `Issue [#${data.number}](${data.html_url}) created! 🎉`,
+        );
+      } catch (e) {
+        console.error("Error creating issue:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error creating the issue",
+          ephemeral: true,
+        });
+      }
+      return;
+    }
+
+    // Get the latest issues for a repository, optionally filtered by assignee
+    if (subcommandGroup === "issues" && subcommand === "lookup") {
+      try {
+        const repoFullname = interaction.options.getString("repo", true);
+        const [owner, repo] = repoFullname.split("/");
+
+        const assignee = interaction.options.getString("assignee", false);
+        const perPage = interaction.options.getNumber("per_page", false) || 5;
+
+        const { data: issues } = await octokit.rest.issues.listForRepo({
+          owner,
+          repo,
+          assignee: assignee || undefined,
+          per_page: perPage,
+          sort: "created",
+          direction: "desc",
+        });
+
+        if (issues.length === 0) {
+          await interaction.reply(`No issues found in ${repoFullname}.`);
+          return;
+        }
+
+        const issueList = issues
+          .map((issue) => {
+            const assignees = issue.assignees
+              ? issue.assignees.map((a) => `@${a.login}`).join(", ")
+              : "None";
+
+            const createdBy = issue.user ? `@${issue.user.login}` : "Unknown";
+            const createdAt = new Date(issue.created_at).toLocaleDateString();
+
+            return `[#${issue.number}](${issue.html_url}) ${issue.title} (${issue.state})
+> Assignees: ${assignees}
+> Created by: ${createdBy}
+> Created at: ${createdAt}`;
+          })
+          .join("\n");
+
+        await interaction.reply({
+          content: `Here are the ${issues.length} most recent issue(s) in **${repoFullname}**:\n\n${issueList}`,
+          flags: [MessageFlags.SuppressEmbeds],
+        });
+      } catch (e) {
+        console.error("Error fetching latest issues:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error fetching the latest issues",
+          ephemeral: true,
+        });
+      }
+
+      return;
+    }
+
+    // Update an existing issue
+    if (subcommandGroup === "issues" && subcommand === "update") {
+      const issueNumber = interaction.options.getNumber("id", true);
+      const repoFullname = interaction.options.getString("repo", true);
+      const [owner, repo] = repoFullname.split("/");
+
+      const { data: issue } = await octokit.rest.issues.get({
+        issue_number: issueNumber,
+        owner,
+        repo,
       });
+
+      if (!issue) {
+        await interaction.reply({
+          content: `❌ Issue #${issueNumber} not found in ${repoFullname}.`,
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const title =
+        interaction.options.getString("title", false) || issue.title;
+      const body =
+        interaction.options.getString("description", false) || issue.body || "";
+      const tags = interaction.options.getString("tags", false);
+      const assignees = interaction.options.getString("assignees", false);
+      const state = interaction.options.getString("state", false) as
+        | "open"
+        | "closed"
+        | undefined;
+
+      try {
+        const { data } = await octokit.rest.issues.update({
+          owner,
+          repo,
+          issue_number: issueNumber,
+          title,
+          body,
+          labels: tags ? tags.split(",").map((tag) => tag.trim()) : undefined,
+          assignees: assignees
+            ? assignees.split(",").map((assignee) => assignee.trim())
+            : undefined,
+          state: state || undefined,
+        });
+
+        await interaction.reply(
+          `Issue [#${data.number}](${data.html_url}) updated! 🎉`,
+        );
+      } catch (e) {
+        console.error("Error updating issue:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error updating the issue",
+          ephemeral: true,
+        });
+      }
+      return;
     }
 
     if (subcommand === "pulls") {
