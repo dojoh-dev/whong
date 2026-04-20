@@ -3,7 +3,7 @@ import env from "./config/env";
 import { webhook } from "./webhook";
 
 const main = async () => {
-  updateSlashCommands();
+  await updateSlashCommands();
 
   import("./events");
 

@@ -1,9 +1,16 @@
 import type { ChatInputCommandInteraction, CacheType } from "discord.js";
+import { Octokit } from "octokit";
+
+import env from "@/config/env";
 
 type CommandHandler = Record<
   "help" | "info" | "server" | "user" | "platform" | "jira" | "gh",
   (interaction: ChatInputCommandInteraction<CacheType>) => Promise<void>
 >;
+
+const octokit = new Octokit({
+  auth: env("GITHUB_TOKEN"),
+});
 
 export default {
   async help(interaction) {
@@ -22,12 +29,15 @@ export default {
 
 - 🎯 **jira**: Provides Jira-related information or actions
 > **/jira [subcommand]** - Executes a Jira-related action. Subcommands include:
-> - **issues**: Manages issues for a dojoh project
+> - **issues lookup**: Looks up an existing Jira issue for a specified dojoh project
+> - **issues create**: Creates a new Jira issue for a specified dojoh project
 
 - 🐙 **gh**: Provides GitHub-related information or actions
 > **/gh [subcommand]** - Executes a GitHub-related action. Subcommands include:
-> - **issues**: Manages issues for a specified dojoh repository
-> - **pulls**: Manages pull requests for a specified dojoh repository
+> - **issues lookup**: Looks up an existing GitHub issue for a specified dojoh repository
+> - **issues create**: Creates a new GitHub issue for a specified dojoh repository
+> - **pulls lookup**: Looks up an existing GitHub pull request for a specified dojoh repository
+> - **pulls create**: Creates a new GitHub pull request for a specified dojoh repository
 `);
   },
 
@@ -81,12 +91,91 @@ I can help with server info, user details, and some Jira and GitHub integrations
 
   async gh(interaction) {
     const subcommand = interaction.options.getSubcommand();
+    const subcommandGroup = interaction.options.getSubcommandGroup();
 
-    if (subcommand === "issues") {
-      await interaction.reply(
-        `🚧 GitHub issues management is currently in development, stay tuned for updates!`,
-      );
+    // Get whether a single issue or pull request
+    if (subcommandGroup === "issues" && subcommand === "lookup") {
+      const issueNumber = interaction.options.getNumber("id", true);
+      const repoFullname = interaction.options.getString("repo", true);
+
+      if (issueNumber <= 0 && !repoFullname) return;
+
+      const [owner, repo] = repoFullname.split("/");
+      const { data: issue } = await octokit.rest.issues.get({
+        issue_number: issueNumber,
+        owner,
+        repo,
+      });
+
+      console.debug("Fetched issue data:", issue.title);
+
+      let labels = "None";
+
+      if (issue.labels && issue.labels.length > 0) {
+        labels = issue.labels
+          .map((label) => {
+            if (typeof label === "string") {
+              return label;
+            } else {
+              return label.name;
+            }
+          })
+          .join(", ");
+      }
+
+      let assignees = "None";
+
+      if (issue.assignees && issue.assignees.length > 0) {
+        assignees = issue.assignees
+          .map((assignee) => `@${assignee.login}`)
+          .join(", ");
+      }
+
+      let body = "> *No description provided.*";
+
+      if (issue.body) {
+        body = issue.body.split("\n").join("\n> ");
+        body = body.endsWith("\n> ") ? body.slice(0, -3) : body;
+      }
+
+      const createdAt = new Date(issue.created_at).toLocaleString();
+
+      const user = issue.user ? `@${issue.user.login}` : "Unknown";
+
+      await interaction.reply(`**Issue #${issue.number}**
+**Title:** ${issue.title}
+**State:** ${issue.state}
+**Author:** ${user}
+**Assignees:** ${assignees}
+**Labels:** ${labels}
+**Created At:** ${createdAt}
+
+> ${body}`);
+
       return;
+    }
+
+    // Create a new issue
+    if (subcommandGroup === "issues" && subcommand === "create") {
+      const repoFullname = interaction.options.getString("repo", true);
+      const [owner, repo] = repoFullname.split("/");
+
+      const payload = {
+        title: interaction.options.getString("title", true),
+        body: interaction.options.getString("description", true),
+        tags: interaction.options.getString("tags", false) || "",
+        assignee: interaction.options.getString("assignee", false) || undefined,
+        owner,
+        repo,
+      };
+
+      await octokit.rest.issues.create({
+        ...payload,
+        assignees: [payload.assignee].filter(Boolean) as string[],
+        labels: payload.tags
+          ? payload.tags.split(",").map((tag) => tag.trim())
+          : [],
+      });
     }
 
     if (subcommand === "pulls") {
