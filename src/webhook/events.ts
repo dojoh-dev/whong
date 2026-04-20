@@ -32,14 +32,17 @@ ${pr.base.ref} <- ${pr.head.ref}
 function handleIssue(payload: any) {
   const issue = payload.issue;
 
-  discord.channel(BigInt(env("ISSUES_THREAD_ID")))
-    .sendMessage(`**🐞 Issue ${payload.action}:** ${issue.title}
+  if (payload.action === "opened") {
+    discord.channel(BigInt(env("ISSUES_THREAD_ID")))
+      .sendMessage(`**🐞 Issue ${payload.action}:** ${issue.title}
 ${issue.html_url}
 
-> ID: #${issue.number}: 
+> ID: #${issue.number}
+> Status: ${issue.action}
 > Author: @${issue.user.login}
 > Repo: ${payload.repository.full_name}
 `);
+  }
 }
 
 function handleWorkflow(payload: any) {
