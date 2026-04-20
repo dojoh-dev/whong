@@ -1,5 +1,7 @@
 import { Events } from "discord.js";
+
 import { client } from "..";
+import handler from "./handler";
 
 client.on(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag} 🎉`);
@@ -8,7 +10,11 @@ client.on(Events.ClientReady, (readyClient) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === "ping") {
-    await interaction.reply("Pong!");
+  const key = interaction.commandName as keyof typeof handler;
+
+  if (!(key in handler)) {
+    console.debug(`No handler found for command: ${interaction.commandName}`);
   }
+
+  await handler[key](interaction);
 });

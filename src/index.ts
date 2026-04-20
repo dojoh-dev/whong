@@ -8,7 +8,7 @@ export const updateSlashCommands = async () => {
     console.log("Started refreshing application (/) commands.");
 
     await rest.put(Routes.applicationCommands(env("CLIENT_ID")), {
-      body: commands,
+      body: commands.map((c) => c.toJSON()),
     });
 
     console.log("Successfully reloaded application (/) commands.");
