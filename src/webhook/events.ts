@@ -2,18 +2,38 @@ import env from "@/config/env";
 import discord from "@/sdk/discord";
 
 function handlePush(payload: any) {
+  const MAX_LINE = 110;
+
   const commits = payload.commits
-    .slice(0, 15) // avoid spam
-    .map(
-      (c: any) =>
-        `${c.message} ..................................................... [${c.sha}](${c.html_url})
-  ${c.author.name} <<${c.author.email}>>                                      ${c.author.date}`,
-    )
-    .join("\n");
+    .slice(0, 10) // limit to 10 commits to avoid spamming
+    .map((c: any) => {
+      const shortSha = c.id.substring(0, 7);
+
+      const commitMessage = c.message.slice(
+        0,
+        c.message.indexOf("\n") > 0 ? c.message.indexOf("\n") : 50,
+      );
+
+      const firstLine = `${commitMessage} [${shortSha}](${c.url})`;
+
+      const author = `${c.author.name} <<${c.author.email}>>`;
+      const dateTime = new Date(c.timestamp).toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const secondLine = `${author} `.padEnd(MAX_LINE);
+      +` ${dateTime}`;
+
+      return `${firstLine}\n${secondLine}`;
+    })
+    .join("\n\n");
 
   discord.channel(BigInt(env("COMMITS_THREAD_ID")))
-    .sendMessage(`💾 Push to ${payload.base_ref} on (${payload.repository.full_name})[${payload.repository.html_url}]
-    
+    .sendMessage(`💾 Push to **${payload.ref}** on [${payload.repository.full_name}](${payload.repository.html_url})
+
 ${commits}
 `);
 }
