@@ -62,8 +62,8 @@ export default [
             )
             .addStringOption((option) =>
               option
-                .setName("description")
-                .setDescription("The description of the issue")
+                .setName("body")
+                .setDescription("The body of the issue")
                 .setRequired(true),
             )
             .addStringOption((option) =>
@@ -115,9 +115,10 @@ export default [
       group
         .setName("issues")
         .setDescription("Manages issues for a specified dojoh repository")
+        // Lookup issue command
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("get")
+            .setName("find")
             .setDescription("Look up an existing GitHub issue")
             .addNumberOption((option) =>
               option
@@ -133,6 +134,7 @@ export default [
                 .addChoices(...repos),
             ),
         )
+        // Create issue command
         .addSubcommand((subcommand) =>
           subcommand
             .setName("create")
@@ -160,19 +162,20 @@ export default [
               option
                 .setName("tags")
                 .setDescription(
-                  "The tags to assign to the issue, comma separated (example: bug, documentation)",
+                  "The tags to assign to the issue, comma separated (e.g., bug, documentation)",
                 )
                 .setRequired(false),
             )
             .addStringOption((option) =>
               option
-                .setName("assignee")
+                .setName("assignees")
                 .setDescription(
-                  "The GitHub username to assign the issue to (defaults to you)",
+                  "The GitHub usernames to assign the issue to, comma separated (example: user1,user2)",
                 )
                 .setRequired(false),
             ),
         )
+        // Lookup issues command
         .addSubcommand((subcommand) =>
           subcommand
             .setName("lookup")
@@ -201,6 +204,7 @@ export default [
                 .setRequired(false),
             ),
         )
+        // Update issue command
         .addSubcommand((subcommand) =>
           subcommand
             .setName("update")
@@ -226,15 +230,15 @@ export default [
             )
             .addStringOption((option) =>
               option
-                .setName("description")
-                .setDescription("The new description of the issue")
+                .setName("body")
+                .setDescription("The new body of the issue")
                 .setRequired(false),
             )
             .addStringOption((option) =>
               option
                 .setName("tags")
                 .setDescription(
-                  "The new tags to assign to the issue, comma separated (example: bug, documentation)",
+                  "The new tags to assign to the issue, comma separated (e.g., bug, documentation)",
                 )
                 .setRequired(false),
             )
@@ -260,10 +264,32 @@ export default [
     )
     .addSubcommandGroup((group) =>
       group
-        .setName("pulls")
+        .setName("pr")
         .setDescription(
           "Manages pull requests for a specified dojoh repository",
         )
+        // Get PR command
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("find")
+            .setDescription("Look up an existing GitHub pull request")
+            .addNumberOption((option) =>
+              option
+                .setName("id")
+                .setDescription("The ID of the pull request")
+                .setRequired(true),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("repo")
+                .setDescription(
+                  "The dojoh repository to look up the pull request in",
+                )
+                .setRequired(true)
+                .addChoices(...repos),
+            ),
+        )
+        // Creaate PR command
         .addSubcommand((subcommand) =>
           subcommand
             .setName("create")
@@ -272,6 +298,22 @@ export default [
               option
                 .setName("title")
                 .setDescription("The title of the pull request")
+                .setRequired(true),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("head")
+                .setDescription(
+                  "The name of the branch where your changes are implemented",
+                )
+                .setRequired(true),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("base")
+                .setDescription(
+                  "The name of the branch you want the changes pulled into",
+                )
                 .setRequired(true),
             )
             .addStringOption((option) =>
@@ -285,9 +327,164 @@ export default [
             )
             .addStringOption((option) =>
               option
-                .setName("description")
-                .setDescription("The description of the pull request")
+                .setName("assignees")
+                .setDescription(
+                  "GitHub usernames to assign, comma-separated (e.g., user1, user2); defaults to you",
+                )
                 .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("reviewers")
+                .setDescription(
+                  "GitHub usernames to request a review from, comma-separated (e.g., user1, user2)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("tags")
+                .setDescription(
+                  "The tags to assign to the pull request, comma separated (e.g., bug, documentation)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("body")
+                .setDescription("The body of the pull request")
+                .setRequired(false),
+            ),
+        )
+        // Lookup PR command
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("lookup")
+            .setDescription(
+              "Get the latest GitHub pull requests for a repository",
+            )
+            .addStringOption((option) =>
+              option
+                .setName("repo")
+                .setDescription(
+                  "The dojoh repository to get the latest pull requests from",
+                )
+                .setRequired(true)
+                .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("assignee")
+                .setDescription(
+                  "The GitHub username to filter pull requests by assignee",
+                )
+                .setRequired(false),
+            )
+            .addNumberOption((option) =>
+              option
+                .setName("per_page")
+                .setDescription(
+                  "The number of pull requests to return (default: 5)",
+                )
+                .setRequired(false),
+            ),
+        )
+        // Update PR command
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("update")
+            .setDescription("Update an existing GitHub pull request")
+            .addNumberOption((option) =>
+              option
+                .setName("id")
+                .setDescription("The ID of the pull request")
+                .setRequired(true),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("repo")
+                .setDescription("The dojoh repository the pull request is in")
+                .setRequired(true)
+                .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("title")
+                .setDescription("The new title of the pull request")
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("body")
+                .setDescription("The new body of the pull request")
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("tags")
+                .setDescription(
+                  "The new tags to assign to the pull request, comma separated (e.g., bug, documentation)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("assignees")
+                .setDescription(
+                  "The GitHub usernames to assign the pull request to, comma separated (e.g., user1,user2)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("reviewers")
+                .setDescription(
+                  "The GitHub usernames to request a review from, comma separated (e.g., user1,user2)",
+                )
+                .setRequired(false),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("state")
+                .setDescription("The new state of the pull request")
+                .setRequired(false)
+                .addChoices(
+                  { name: "Open", value: "open" },
+                  { name: "Closed", value: "closed" },
+                  { name: "Merged", value: "merged" },
+                ),
+            ),
+        )
+        // Merge PR command
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("merge")
+            .setDescription("Merge an existing GitHub pull request")
+            .addNumberOption((option) =>
+              option
+                .setName("id")
+                .setDescription("The ID of the pull request")
+                .setRequired(true),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("repo")
+                .setDescription("The dojoh repository the pull request is in")
+                .setRequired(true)
+                .addChoices(...repos),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("strategy")
+                .setDescription(
+                  "The merge strategy to use. (default: Rebase and merge)",
+                )
+                .addChoices(
+                  { name: "Rebase and merge", value: "rebase" },
+                  { name: "Squash and merge", value: "squash" },
+                  { name: "Merge commit", value: "merge" },
+                )
+                .setRequired(true),
             ),
         ),
     ),

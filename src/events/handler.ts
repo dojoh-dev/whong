@@ -98,7 +98,7 @@ I can help with server info, user details, and some Jira and GitHub integrations
     const subcommandGroup = interaction.options.getSubcommandGroup();
 
     // Get whether a single issue or pull request
-    if (subcommandGroup === "issues" && subcommand === "get") {
+    if (subcommandGroup === "issues" && subcommand === "find") {
       const issueNumber = interaction.options.getNumber("id", true);
       const repoFullname = interaction.options.getString("repo", true);
 
@@ -110,8 +110,6 @@ I can help with server info, user details, and some Jira and GitHub integrations
         owner,
         repo,
       });
-
-      console.debug("Fetched issue data:", issue.title);
 
       let labels = "None";
 
@@ -142,16 +140,16 @@ I can help with server info, user details, and some Jira and GitHub integrations
         body = body.endsWith("\n> ") ? body.slice(0, -3) : body;
       }
 
-      const createdAt = new Date(issue.created_at).toLocaleString();
+      const createdAt = new Date(issue.created_at).toDateString();
 
       const user = issue.user ? `@${issue.user.login}` : "Unknown";
 
       await interaction.reply(`**Issue #${issue.number}**
 **Title:** ${issue.title}
 **State:** ${issue.state}
-**Author:** ${user}
 **Assignees:** ${assignees}
 **Labels:** ${labels}
+**Author:** ${user}
 **Created At:** ${createdAt}
 
 > ${body}`);
@@ -164,13 +162,13 @@ I can help with server info, user details, and some Jira and GitHub integrations
       const repoFullname = interaction.options.getString("repo", true);
       const [owner, repo] = repoFullname.split("/");
 
-      const { assignee, ...payload } = {
+      const { ...payload } = {
         title: interaction.options.getString("title", true),
-        body: interaction.options.getString("description", true),
+        body: interaction.options.getString("body", true),
         tags: interaction.options.getString("tags", false) || "",
-        assignee:
-          interaction.options.getString("assignee", false) ||
-          interaction.user.username,
+        assignees: (interaction.options.getString("assignees", false) || "")
+          .split(",")
+          .map((assignee) => assignee.trim()),
         owner,
         repo,
       };
@@ -178,7 +176,10 @@ I can help with server info, user details, and some Jira and GitHub integrations
       try {
         const { data } = await octokit.rest.issues.create({
           ...payload,
-          assignees: [assignee].filter(Boolean) as string[],
+          assignees:
+            payload.assignees.length > 0
+              ? payload.assignees
+              : [interaction.user.username],
           labels: payload.tags
             ? payload.tags.split(",").map((tag) => tag.trim())
             : [],
@@ -192,7 +193,7 @@ I can help with server info, user details, and some Jira and GitHub integrations
 
         await interaction.reply({
           content: "❌ Sorry, there was an error creating the issue",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         });
       }
       return;
@@ -207,7 +208,7 @@ I can help with server info, user details, and some Jira and GitHub integrations
         const assignee = interaction.options.getString("assignee", false);
         const perPage = interaction.options.getNumber("per_page", false) || 5;
 
-        const { data: issues } = await octokit.rest.issues.listForRepo({
+        const { data } = await octokit.rest.issues.listForRepo({
           owner,
           repo,
           assignee: assignee || undefined,
@@ -216,26 +217,19 @@ I can help with server info, user details, and some Jira and GitHub integrations
           direction: "desc",
         });
 
-        if (issues.length === 0) {
-          await interaction.reply(`No issues found in ${repoFullname}.`);
-          return;
-        }
+        const issues = data.filter((issue) => !issue.pull_request);
 
         const issueList = issues
-          .map((issue) => {
-            const assignees = issue.assignees
-              ? issue.assignees.map((a) => `@${a.login}`).join(", ")
-              : "None";
-
-            const createdBy = issue.user ? `@${issue.user.login}` : "Unknown";
-            const createdAt = new Date(issue.created_at).toLocaleDateString();
-
-            return `[#${issue.number}](${issue.html_url}) ${issue.title} (${issue.state})
-> Assignees: ${assignees}
-> Created by: ${createdBy}
-> Created at: ${createdAt}`;
-          })
+          .map(
+            (issue) =>
+              `[#${issue.number}](${issue.html_url}) ${issue.title} (${issue.state})`,
+          )
           .join("\n");
+
+        if (issues.length === 0) {
+          await interaction.reply(`No issues found in **${repoFullname}**.`);
+          return;
+        }
 
         await interaction.reply({
           content: `Here are the ${issues.length} most recent issue(s) in **${repoFullname}**:\n\n${issueList}`,
@@ -246,7 +240,7 @@ I can help with server info, user details, and some Jira and GitHub integrations
 
         await interaction.reply({
           content: "❌ Sorry, there was an error fetching the latest issues",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         });
       }
 
@@ -259,24 +253,8 @@ I can help with server info, user details, and some Jira and GitHub integrations
       const repoFullname = interaction.options.getString("repo", true);
       const [owner, repo] = repoFullname.split("/");
 
-      const { data: issue } = await octokit.rest.issues.get({
-        issue_number: issueNumber,
-        owner,
-        repo,
-      });
-
-      if (!issue) {
-        await interaction.reply({
-          content: `❌ Issue #${issueNumber} not found in ${repoFullname}.`,
-          ephemeral: true,
-        });
-        return;
-      }
-
-      const title =
-        interaction.options.getString("title", false) || issue.title;
-      const body =
-        interaction.options.getString("description", false) || issue.body || "";
+      const title = interaction.options.getString("title", false) || undefined;
+      const body = interaction.options.getString("body", false) || undefined;
       const tags = interaction.options.getString("tags", false);
       const assignees = interaction.options.getString("assignees", false);
       const state = interaction.options.getString("state", false) as
@@ -306,17 +284,269 @@ I can help with server info, user details, and some Jira and GitHub integrations
 
         await interaction.reply({
           content: "❌ Sorry, there was an error updating the issue",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         });
       }
       return;
     }
 
-    if (subcommand === "pulls") {
-      await interaction.reply(
-        `🚧 GitHub pull requests management is currently in development, stay tuned for updates!`,
-      );
+    // Get a single pull request by ID
+    if (subcommandGroup === "pr" && subcommand === "find") {
+      const prNumber = interaction.options.getNumber("id", true);
+      const repoFullname = interaction.options.getString("repo", true);
+
+      const [owner, repo] = repoFullname.split("/");
+
+      try {
+        const { data: pr } = await octokit.rest.pulls.get({
+          owner,
+          repo,
+          pull_number: prNumber,
+        });
+
+        let body = "> *No description provided.*";
+
+        if (pr.body) {
+          body = pr.body.split("\n").join("\n> ");
+          body = body.endsWith("\n> ") ? body.slice(0, -3) : body;
+        }
+
+        let tags = "None";
+
+        if (pr.labels && pr.labels.length > 0) {
+          tags = pr.labels
+            .map((label) => {
+              if (typeof label === "string") {
+                return label;
+              } else {
+                return label.name;
+              }
+            })
+            .join(", ");
+        }
+
+        let assignees = "None";
+
+        if (pr.assignees && pr.assignees.length > 0) {
+          assignees = pr.assignees
+            .map((assignee) => `@${assignee.login}`)
+            .join(", ");
+        }
+
+        let reviewers = "None";
+
+        if (pr.requested_reviewers && pr.requested_reviewers.length > 0) {
+          reviewers = pr.requested_reviewers
+            .map((reviewer) => `@${reviewer.login}`)
+            .join(", ");
+        }
+
+        const createdAt = new Date(pr.created_at).toDateString();
+        const user = pr.user ? `@${pr.user.login}` : "Unknown";
+
+        await interaction.reply(`**PR #${pr.number}**
+**Title:** ${pr.title}
+**State:** ${pr.state}
+**Labels:** ${tags}
+**Assignees:** ${assignees}
+**Reviewers:** ${reviewers}
+**Author:** ${user}
+**Created At:** ${createdAt}
+
+> ${body}`);
+      } catch (e) {
+        console.error("Error fetching PR:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error fetching the PR",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
       return;
     }
+
+    // Update a pull request
+    if (subcommandGroup === "pr" && subcommand === "update") {
+      const prNumber = interaction.options.getNumber("id", true);
+      const repoFullname = interaction.options.getString("repo", true);
+      const [owner, repo] = repoFullname.split("/");
+
+      const title = interaction.options.getString("title", false) || undefined;
+      const body = interaction.options.getString("body", false) || undefined;
+      const tags = interaction.options.getString("tags", false);
+      const state = interaction.options.getString("state", false) as
+        | "open"
+        | "closed"
+        | undefined;
+
+      try {
+        const { data } = await octokit.rest.pulls.update({
+          owner,
+          repo,
+          pull_number: prNumber,
+          title,
+          body,
+          labels: tags ? tags.split(",").map((tag) => tag.trim()) : undefined,
+          state: state || undefined,
+        });
+
+        await interaction.reply(
+          `PR [#${data.number}](${data.html_url}) updated! 🎉`,
+        );
+      } catch (e) {
+        console.error("Error updating PR:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error updating the PR",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+    }
+
+    // Create a new pull request
+    if (subcommandGroup === "pr" && subcommand === "create") {
+      const repoFullname = interaction.options.getString("repo", true);
+      const [owner, repo] = repoFullname.split("/");
+
+      const { reviewers, ...payload } = {
+        title: interaction.options.getString("title", true),
+        head: interaction.options.getString("head", true),
+        base: interaction.options.getString("base", true),
+        body: interaction.options.getString("body", false),
+        tags: interaction.options.getString("tags", false) || "",
+        assignees: (
+          interaction.options.getString("assignees", false) ||
+          interaction.user.username
+        )
+          .split(",")
+          .map((assignee) => assignee.trim()),
+        reviewers: (
+          interaction.options.getString("reviewers", false) || "itssimmons"
+        )
+          .split(",")
+          .map((reviewer) => reviewer.trim()),
+        owner,
+        repo,
+      };
+
+      try {
+        const { data } = await octokit.rest.pulls.create({
+          ...payload,
+          assignees:
+            payload.assignees.length > 0 ? payload.assignees : undefined,
+        });
+
+        await octokit.rest.pulls.requestReviewers({
+          owner,
+          repo,
+          pull_number: data.number,
+          reviewers: reviewers.length > 0 ? reviewers : undefined,
+        });
+
+        await interaction.reply(
+          `PR [#${data.number}](${data.html_url}) created! 🎉`,
+        );
+      } catch (e) {
+        console.error("Error creating PR:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error creating the PR",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+    }
+
+    // Get the latest pull requests for a repository, optionally filtered by assignee
+    if (subcommandGroup === "pr" && subcommand === "lookup") {
+      try {
+        const repoFullname = interaction.options.getString("repo", true);
+        const [owner, repo] = repoFullname.split("/");
+
+        const assignee = interaction.options.getString("assignee", false);
+        const perPage = interaction.options.getNumber("per_page", false) || 5;
+
+        const { data: pulls } = await octokit.rest.pulls.list({
+          owner,
+          repo,
+          assignee: assignee || undefined,
+          per_page: perPage,
+          sort: "created",
+          direction: "desc",
+        });
+
+        if (pulls.length === 0) {
+          await interaction.reply(`No PRs found in **${repoFullname}**.`);
+          return;
+        }
+
+        const prList = pulls
+          .map(
+            (pr) => `[#${pr.number}](${pr.html_url}) ${pr.title} (${pr.state})`,
+          )
+          .join("\n");
+
+        await interaction.reply({
+          content: `Here are the ${pulls.length} pull request(s) in **${repoFullname}**:\n\n${prList}`,
+          flags: [MessageFlags.SuppressEmbeds],
+        });
+      } catch (e) {
+        console.error("Error fetching pull requests:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error fetching the pull requests",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
+      return;
+    }
+
+    // Merge a pull request
+    if (subcommandGroup === "pr" && subcommand === "merge") {
+      const repoFullname = interaction.options.getString("repo", true);
+      const [owner, repo] = repoFullname.split("/");
+
+      const prNumber = interaction.options.getNumber("id", true);
+      const strategy = interaction.options.getString("strategy", true) as
+        | "merge"
+        | "squash"
+        | "rebase";
+
+      try {
+        const { data } = await octokit.rest.pulls.merge({
+          owner,
+          repo,
+          merge_method: strategy,
+          pull_number: prNumber,
+        });
+
+        if (!data.merged) {
+          await interaction.reply({
+            content: `😔 PR #${prNumber} could not be merged. Reason: ${data.message}`,
+            flags: [MessageFlags.Ephemeral],
+          });
+          return;
+        }
+
+        await interaction.reply(
+          `PR #${prNumber} merged successfully using the **${strategy}** strategy! 🎉`,
+        );
+      } catch (e) {
+        console.error("Error merging PR:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error merging the PR",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+      return;
+    }
+
+    await interaction.reply({
+      content:
+        "❌ Invalid subcommand. Please check the command options and try again.",
+      flags: [MessageFlags.Ephemeral],
+    });
   },
 } satisfies CommandHandler;
