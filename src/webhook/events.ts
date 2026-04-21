@@ -3,15 +3,18 @@ import discord from "@/sdk/discord";
 
 function handlePush(payload: any) {
   const commits = payload.commits
-    .slice(0, 10) // avoid spam
-    .map((c: any) => `@${c.author.name}: ${c.message}`)
+    .slice(0, 15) // avoid spam
+    .map(
+      (c: any) =>
+        `${c.message} ..................................................... [${c.sha}](${c.html_url})
+  ${c.author.name} <<${c.author.email}>>                                      ${c.author.date}`,
+    )
     .join("\n");
 
   discord.channel(BigInt(env("COMMITS_THREAD_ID")))
-    .sendMessage(`💾 Push to ${payload.ref}
+    .sendMessage(`💾 Push to ${payload.base_ref} on (${payload.repository.full_name})[${payload.repository.html_url}]
+    
 ${commits}
-
-> Repo: ${payload.repository.full_name}
 `);
 }
 
@@ -20,8 +23,18 @@ function handlePR(payload: any) {
 
   if (payload.action === "opened") {
     discord.channel(BigInt(env("PR_THREAD_ID")))
-      .sendMessage(`**📥 PR ${payload.action}:** ${pr.title}
-(Opened) ${pr.base.ref} <- ${pr.head.ref}
+      .sendMessage(`**📥 PR (Opened)** ${pr.title}
+\`${pr.head.ref}\` → \`${pr.base.ref}\`
+
+> ID: #${pr.number}
+> Url: ${pr.html_url}
+> Author: @${pr.user.login}
+> Repo: ${payload.repository.full_name}
+`);
+  } else if (payload.action === "closed") {
+    discord.channel(BigInt(env("PR_THREAD_ID")))
+      .sendMessage(`**📥 PR (Closed)** ${pr.title}
+${pr.base.ref} <- ${pr.head.ref}
 
 > ID: #${pr.number}
 > Url: ${pr.html_url}
@@ -36,11 +49,19 @@ function handleIssue(payload: any) {
 
   if (payload.action === "opened") {
     discord.channel(BigInt(env("ISSUES_THREAD_ID")))
-      .sendMessage(`**🐞 Issue ${payload.action}:** ${issue.title}
+      .sendMessage(`**🐞 Issue (Opened)** ${issue.title} 
 ${issue.html_url}
 
 > ID: #${issue.number}
-> Status: ${issue.action}
+> Author: @${issue.user.login}
+> Repo: ${payload.repository.full_name}
+`);
+  } else if (payload.action === "closed") {
+    discord.channel(BigInt(env("ISSUES_THREAD_ID")))
+      .sendMessage(`**🐞 Issue (Closed)** ${issue.title}
+${issue.html_url}
+
+> ID: #${issue.number}
 > Author: @${issue.user.login}
 > Repo: ${payload.repository.full_name}
 `);
@@ -50,8 +71,10 @@ ${issue.html_url}
 function handleWorkflow(payload: any) {
   const run = payload.workflow_run;
 
+  const conclusion = run.conclusion === "success" ? "✅ Success" : "❌ Failure";
+
   discord.channel(BigInt(env("WORKFLOWS_THREAD_ID")))
-    .sendMessage(`**⚙️ Workflow ${run.display_title}**  (${run.conclusion})
+    .sendMessage(`**⚙️ Workflow ${run.display_title}**  (${conclusion})
 ${run.html_url}
 
 > ID: #${run.id}
