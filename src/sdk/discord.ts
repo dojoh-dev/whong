@@ -1,6 +1,6 @@
-import { TextChannel, ThreadChannel } from "discord.js";
+import type { TextChannel } from "discord.js";
 
-import { client } from "..";
+import { client } from "../main";
 
 class DiscordBuilder {
   public channelId: bigint = 1000000000000000000n;

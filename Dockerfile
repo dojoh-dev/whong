@@ -17,7 +17,8 @@ WORKDIR /bot
 
 COPY --from=builder /bot/dist ./dist
 COPY --from=builder /bot/node_modules ./node_modules
-COPY --from=builder /bot/package.json ./
+
+RUN echo "{ \"name\": \"whong\", \"version\": \"0.0.0\", \"private\": true }" > package.json
 
 RUN npm install -g cloudflared
 
@@ -26,5 +27,4 @@ RUN chmod +x /start.sh
 
 EXPOSE 3000
 
-# CMD ["/start.sh"]
-CMD ["while true; do sleep 1; done"]
+CMD ["/start.sh"]

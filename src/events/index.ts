@@ -1,6 +1,6 @@
 import { Events } from "discord.js";
 
-import { client } from "..";
+import { client } from "../main";
 import handler from "./handler";
 
 client.on(Events.ClientReady, (readyClient) => {

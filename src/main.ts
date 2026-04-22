@@ -1,15 +1,22 @@
-import { client, updateSlashCommands } from ".";
+import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
+
 import env from "./config/env";
-import { webhook } from "./webhook";
+import commands from "./commands";
 
-const main = async () => {
-  updateSlashCommands();
+export const refreshCommands = async () => {
+  try {
+    console.log("Started refreshing application (/) commands.");
 
-  import("./events");
+    await rest.put(Routes.applicationCommands(env("CLIENT_ID")), {
+      body: commands.map((c) => c.toJSON()),
+    });
 
-  client.login(env("TOKEN"));
-
-  webhook.start();
+    console.log("Successfully reloaded application (/) commands.");
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-main();
+export const rest = new REST({ version: "10" }).setToken(env("TOKEN"));
+
+export const client = new Client({ intents: [GatewayIntentBits.Guilds] });
