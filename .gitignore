@@ -12,3 +12,7 @@ pnpm-debug.log
 # MacOS
 .DS_Store
 ._*
+
+# Distribution
+dist/
+build/
