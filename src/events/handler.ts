@@ -3,22 +3,20 @@ import {
   type CacheType,
   MessageFlags,
 } from "discord.js";
-import { Octokit } from "octokit";
 
+import octokit from "@/sdk/octokit";
 import env from "@/config/env";
+import { jiraToDiscord } from "./utils/jira";
+import jiraSdk from "@/sdk/jira";
 
 type CommandHandler = Record<
   "help" | "info" | "server" | "user" | "platform" | "jira" | "gh",
   (interaction: ChatInputCommandInteraction<CacheType>) => Promise<void>
 >;
 
-const octokit = new Octokit({
-  auth: env("GITHUB_TOKEN"),
-});
-
 export default {
   async help(interaction) {
-    await interaction.reply(`Here's a list of commands you can use with me:
+    await interaction.reply(`**Here's a list of commands you can use with me:**
 
 - ❓ **help**: Text this help message
 
@@ -33,15 +31,22 @@ export default {
 
 - 🎯 **jira**: Provides Jira-related information or actions
 > **/jira [subcommand]** - Executes a Jira-related action. Subcommands include:
-> - **issues lookup**: Looks up an existing Jira issue for a specified dojoh project
-> - **issues create**: Creates a new Jira issue for a specified dojoh project
+> - **issues find**: Get detail information about a Jira issue by ID
+> - **issues create**: Creates a new Jira issued to yourself
+> - **issues lookup**: Looks up the latest Jira issues assigned to yourself or specificed user
+> - **issues move**: Move a Jira issue to a different status
 
 - 🐙 **gh**: Provides GitHub-related information or actions
 > **/gh [subcommand]** - Executes a GitHub-related action. Subcommands include:
-> - **issues lookup**: Looks up an existing GitHub issue for a specified dojoh repository
+> - **issues find**: Get detail information about a GitHub issue by ID
 > - **issues create**: Creates a new GitHub issue for a specified dojoh repository
-> - **pulls lookup**: Looks up an existing GitHub pull request for a specified dojoh repository
-> - **pulls create**: Creates a new GitHub pull request for a specified dojoh repository
+> - **issues lookup**: Looks up the latest GitHub issues for a specified dojoh repository
+> - **issues update**: Updates an existing GitHub issue
+> - **pr find**: Get detail information about a GitHub pull request by ID
+> - **pr create**: Creates a new GitHub pull request for a specified dojoh repository
+> - **pr lookup**: Looks up the latest GitHub pull requests for a specified dojoh repository
+> - **pr update**: Updates an existing GitHub pull request
+> - **pr merge**: Merges a GitHub pull request using a chosen strategy
 `);
   },
 
@@ -60,11 +65,14 @@ I can help with server info, user details, and some Jira and GitHub integrations
     }
 
     const { name, memberCount, ownerId, createdAt } = guild;
+    const days = Math.floor(
+      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     await interaction.reply(`**Server Name:** ${name}
 **Member Count:** ${memberCount}
 **Owner:** <@${ownerId}>
-**Created At:** ${createdAt.toDateString()}
+**Days Since Creation:** ${days}
 		`);
   },
 
@@ -84,13 +92,186 @@ I can help with server info, user details, and some Jira and GitHub integrations
 
   async jira(interaction) {
     const subcommand = interaction.options.getSubcommand();
+    const subcommandGroup = interaction.options.getSubcommandGroup();
 
-    if (subcommand === "issues") {
-      await interaction.reply(
-        `🚧 Jira issues management is currently in development, stay tuned for updates!`,
-      );
+    // Get a single Jira issue by ID
+    if (subcommandGroup === "issues" && subcommand === "find") {
+      const issueKey = interaction.options.getString("id", true);
+
+      try {
+        const response = await jiraSdk.issue.get(issueKey);
+
+        const assignee = response.fields.assignee
+          ? response.fields.assignee.displayName
+          : "Unassigned";
+
+        const createdAt = new Date(response.fields.created).toDateString();
+
+        await interaction.reply(`## [${response.key}] ${response.fields.summary}
+**Status:** \`${response.fields.status.name}\`
+**Assignee:** ${assignee}
+**Reporter:** ${response.fields.reporter.displayName}
+**Created At:** ${createdAt}
+**Link:** https://${env("JIRA_DOMAIN")}.atlassian.net/browse/${response.key}
+
+${jiraToDiscord(response.fields.description)}`);
+      } catch (e) {
+        console.error("Error fetching Jira issue:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error fetching the Jira issue",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
       return;
     }
+
+    // Create a new Jira issue and assign it to themself, optionally with a parent issue, and tags
+    if (subcommandGroup === "issues" && subcommand === "create") {
+      const assigneeSearch = await jiraSdk.user.search(
+        interaction.user.displayName,
+      );
+
+      if (assigneeSearch.length === 0) {
+        await interaction.reply({
+          content:
+            "❌ Sorry, I couldn't find your Jira account to assign the issue to you. Please make sure your Discord display name matches your Jira account name.",
+          flags: [MessageFlags.Ephemeral],
+        });
+        return;
+      }
+
+      const assigneeId = assigneeSearch[0].accountId;
+
+      const payload = {
+        title: interaction.options.getString("title", true),
+        description: interaction.options.getString("description", true),
+        tags: interaction.options.getString("tag", true),
+        assignee: {
+          name: interaction.user.displayName,
+        },
+        projectKey: env("JIRA_PROJECT_KEY"),
+        parentKey:
+          interaction.options.getString("parent_id", false) || undefined,
+      };
+
+      try {
+        const response = await jiraSdk.issue.create({
+          project: {
+            key: payload.projectKey,
+          },
+          issuetype: {
+            name: payload.parentKey ? "Sub-task" : "Task",
+          },
+          parent: payload.parentKey ? { key: payload.parentKey } : undefined,
+          summary: payload.title,
+          description: payload.description,
+          labels: [payload.tags],
+          assignee: {
+            id: assigneeId,
+          },
+          reporter: {
+            id: assigneeId,
+          },
+        });
+
+        await interaction.reply({
+          content: `Issue [${response.key}](https://${env("JIRA_DOMAIN")}.atlassian.net/browse/${response.key}) created! 🎉`,
+        });
+      } catch (e) {
+        console.error("Error creating Jira issue:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error creating the Jira issue",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+    }
+
+    // List all Jira issues assigned to themself or specificed user
+    if (subcommandGroup === "issues" && subcommand === "lookup") {
+      const assigneeName =
+        interaction.options.getString("assignee", false) ||
+        interaction.user.displayName;
+      const perPage = interaction.options.getNumber("per_page", false) || 5;
+      const status = interaction.options.getString("status", false);
+
+      try {
+        const assigneeSearch = await jiraSdk.user.search(assigneeName);
+
+        if (assigneeSearch.length === 0) {
+          await interaction.reply({
+            content: `❌ Sorry, I couldn't find a Jira account matching "${assigneeName}". Please make sure the name matches a Jira user.`,
+            flags: [MessageFlags.Ephemeral],
+          });
+          return;
+        }
+
+        const assigneeId = assigneeSearch[0].accountId;
+
+        const jql =
+          `assignee=${assigneeId}` +
+          (status ? ` AND status="${status}"` : "") +
+          ` ORDER BY created DESC`;
+
+        const response = await jiraSdk.jql.search(jql, {
+          maxResults: perPage,
+          fields: ["key", "summary", "status", "assignee"],
+          orderBy: "created",
+          expand: ["names"],
+        });
+
+        const issueList = response.issues
+          .map(
+            (issue: any) =>
+              `[${issue.key}](https://${env("JIRA_DOMAIN")}.atlassian.net/browse/${issue.key}) - ${issue.fields.summary} (\`${issue.fields.status.name}\`)`,
+          )
+          .join("\n");
+
+        await interaction.reply({
+          content: `Here are the ${response.issues.length} most recent issue(s) assigned to **${assigneeName}**:\n\n${issueList}`,
+          flags: [MessageFlags.SuppressEmbeds],
+        });
+      } catch (e) {
+        console.error("Error fetching assigned Jira issues:", e);
+
+        await interaction.reply({
+          content:
+            "❌ Sorry, there was an error fetching the assigned Jira issues",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
+      return;
+    }
+
+    // Transition a Jira issue to a different status
+    if (subcommandGroup === "issues" && subcommand === "move") {
+      const issueKey = interaction.options.getString("id", true);
+      const status = interaction.options.getString("status", true);
+
+      try {
+        await jiraSdk.issue.transitions(issueKey, Number(status));
+
+        await interaction.reply(`Issue ${issueKey} moved successfully! 🎉`);
+      } catch (e) {
+        console.error("Error moving Jira issue:", e);
+
+        await interaction.reply({
+          content: "❌ Sorry, there was an error moving the Jira issue",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
+      return;
+    }
+
+    await interaction.reply({
+      content:
+        "❌ Invalid subcommand. Please check the command options and try again.",
+      flags: [MessageFlags.Ephemeral],
+    });
   },
 
   async gh(interaction) {
@@ -413,7 +594,7 @@ I can help with server info, user details, and some Jira and GitHub integrations
         title: interaction.options.getString("title", true),
         head: interaction.options.getString("head", true),
         base: interaction.options.getString("base", true),
-        body: interaction.options.getString("body", false),
+        body: interaction.options.getString("body", false) || "",
         tags: interaction.options.getString("tags", false) || "",
         assignees: (
           interaction.options.getString("assignees", false) ||

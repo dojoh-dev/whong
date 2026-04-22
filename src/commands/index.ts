@@ -41,19 +41,19 @@ export default [
         .setDescription("Manages issues for a dojoh project")
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("lookup")
-            .setDescription("Look up an existing Jira issue")
+            .setName("find")
+            .setDescription("Get an existing Jira issue")
             .addStringOption((option) =>
               option
                 .setName("id")
-                .setDescription("The ID of the issue")
+                .setDescription("The ID of the issue, (e.g., DOJ-123)")
                 .setRequired(true),
             ),
         )
         .addSubcommand((subcommand) =>
           subcommand
             .setName("create")
-            .setDescription("Create a new Jira issue")
+            .setDescription("Create a new Jira issue assigned to you")
             .addStringOption((option) =>
               option
                 .setName("title")
@@ -62,48 +62,85 @@ export default [
             )
             .addStringOption((option) =>
               option
-                .setName("body")
-                .setDescription("The body of the issue")
+                .setName("description")
+                .setDescription("The description of the issue")
                 .setRequired(true),
             )
             .addStringOption((option) =>
               option
-                .setName("tags")
-                .setDescription("The tags to assign to the issue")
-                .setRequired(false)
-                .addChoices(
-                  { name: "Bug", value: "bug" },
-                  { name: "Documentation", value: "documentation" },
-                  { name: "Enhancement", value: "enhancement" },
-                  { name: "Good first issue", value: "good_first_issue" },
-                  { name: "Help wanted", value: "help_wanted" },
-                  { name: "Question", value: "question" },
-                ),
-            )
-            .addStringOption((option) =>
-              option
-                .setName("type")
-                .setDescription("The type of the issue")
-                .setRequired(false)
+                .setName("tag")
+                .setDescription("The tag to assign to the issue")
+                .setRequired(true)
                 .addChoices(
                   { name: "Bug", value: "bug" },
                   { name: "Feature", value: "feature" },
-                  { name: "Task", value: "task" },
+                  { name: "Documentation", value: "documentation" },
+                  { name: "Infrastructure", value: "infrastructure" },
+                  { name: "Miscellaneous", value: "miscellaneous" },
+                  { name: "Other", value: "other" },
                 ),
             )
-            .addUserOption((option) =>
+            .addNumberOption((option) =>
               option
-                .setName("assignee")
+                .setName("parent_id")
                 .setDescription(
-                  "The user to assign the issue to (defaults to you)",
+                  "The parent task to link this issue to, (e.g., DOJ-123)",
                 )
                 .setRequired(false),
+            ),
+        )
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("lookup")
+            .setDescription(
+              "Get the latest Jira issues assigned to you or another user (default: you)",
             )
             .addStringOption((option) =>
               option
-                .setName("parent")
-                .setDescription("The parent task to link this issue to")
+                .setName("status")
+                .setDescription("The status to filter issues by")
+                .setRequired(false)
+                .addChoices(
+                  { name: "To Do", value: "To-Do" },
+                  { name: "Doing", value: "Doing" },
+                  { name: "In-Preview", value: "In-Preview" },
+                  { name: "Done", value: "Done" },
+                ),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("username")
+                .setDescription("The username to filter issues by assignee")
                 .setRequired(false),
+            )
+            .addNumberOption((option) =>
+              option
+                .setName("per_page")
+                .setDescription("The number of issues to return (default: 5)")
+                .setRequired(false),
+            ),
+        )
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("move")
+            .setDescription("Move a Jira issue to a different status")
+            .addStringOption((option) =>
+              option
+                .setName("id")
+                .setDescription("The ID of the issue, (e.g., DOJ-123)")
+                .setRequired(true),
+            )
+            .addStringOption((option) =>
+              option
+                .setName("status")
+                .setDescription("The new status to move the issue to")
+                .setRequired(true)
+                .addChoices(
+                  { name: "To Do", value: "11" },
+                  { name: "Doing", value: "21" },
+                  { name: "In-Preview", value: "2" },
+                  { name: "Done", value: "31" },
+                ),
             ),
         ),
     ),
