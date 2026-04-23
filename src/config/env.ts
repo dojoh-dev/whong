@@ -1,4 +1,4 @@
-import "dotenv/config";
+import 'dotenv/config';
 
 export default function env(key: string): string;
 export default function env<T>(key: string, defaultValue: T): T;

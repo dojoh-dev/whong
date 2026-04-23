@@ -1,21 +1,26 @@
 {
-	"compilerOptions": {
-		"target": "esnext",
-		"module": "esnext",
-		"moduleResolution": "bundler",
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
 
-		"strict": true,
-		"noImplicitAny": true,
-		"esModuleInterop": true,
-		"allowJs": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": true,
+    "allowJs": false,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
 
-		"ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "6.0",
 
-		"baseUrl": ".",
-		"paths": {
-			"@/*": ["./src/*"],
-		},
-	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "@types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "ci", "coverage"]
 }

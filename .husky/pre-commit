@@ -1,0 +1,4 @@
+# TO-DO: type-check only changed files
+
+npm run type-check &&
+npx lint-staged
