@@ -1,5 +1,5 @@
 #!/bin/sh
 
-node dist/main.js &
-cloudflared tunnel run --no-autoupdate --token "$CLOUDFLARED_TOKEN"
+node dist/index.js &
+cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARED_TOKEN" --url http://localhost:3000
 wait
