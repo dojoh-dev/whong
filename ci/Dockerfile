@@ -20,9 +20,9 @@ COPY --from=builder /bot/node_modules ./node_modules
 
 RUN cat <<EOF > package.json
 {
-	"name": "whong",
-	"version": "0.0.0",
-	"private": true,
+  "name": "whong",
+  "version": "0.0.0",
+  "private": true
 }
 EOF
 
