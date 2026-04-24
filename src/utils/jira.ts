@@ -1,4 +1,6 @@
 export function jiraToDiscord(input: string): string {
+  if (!input) return '';
+
   let output = input;
 
   // Headings (h1. → **bold + newline**)

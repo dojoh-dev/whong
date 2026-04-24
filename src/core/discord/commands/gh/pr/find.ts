@@ -59,7 +59,7 @@ export const find = async (
     const createdAt = new Date(pr.created_at).toDateString();
     const user = pr.user ? `@${pr.user.login}` : 'Unknown';
 
-    await interaction.reply(`**PR #${pr.number}**
+    await interaction.reply(`## PR [#${pr.number}](${pr.html_url})
 **Title:** ${pr.title}
 **State:** ${pr.state}
 **Labels:** ${tags}

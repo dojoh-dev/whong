@@ -50,7 +50,7 @@ export const find = async (
 
   const user = issue.user ? `@${issue.user.login}` : 'Unknown';
 
-  await interaction.reply(`**Issue #${issue.number}**
+  await interaction.reply(`## Issue [#${issue.number}](${issue.html_url})
 **Title:** ${issue.title}
 **State:** ${issue.state}
 **Assignees:** ${assignees}

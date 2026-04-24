@@ -14,6 +14,7 @@ import type {
   CacheType,
   ChatInputCommandInteraction,
   Client,
+  GuildMember,
 } from 'discord.js';
 
 type CommandHandler = Record<
@@ -29,10 +30,13 @@ const handler = {
   platform,
 
   async jira(interaction) {
-    const roles = interaction.member?.roles as string[] | undefined;
-    if (!roles || !roles.includes(env('DEV_ROLE_ID'))) {
+    const member = interaction.member as GuildMember;
+    const roles = member.roles.cache;
+
+    if (!roles || !roles.has(env('DEV_ROLE_ID'))) {
       await interaction.reply({
-        content: '❌ You do not have permission to use this command.',
+        content:
+          '☹️ Sorry, but you do not have permission to use this command.',
         flags: [MessageFlags.Ephemeral],
       });
       return;
@@ -45,16 +49,16 @@ const handler = {
       switch (subcommand) {
         case 'find':
           jiraCommand.issues.find(interaction);
-          break;
+          return;
         case 'create':
           jiraCommand.issues.create(interaction);
-          break;
+          return;
         case 'lookup':
           jiraCommand.issues.lookup(interaction);
-          break;
+          return;
         case 'move':
           jiraCommand.issues.move(interaction);
-          break;
+          return;
         default:
           return;
       }
@@ -68,10 +72,13 @@ const handler = {
   },
 
   async gh(interaction) {
-    const roles = interaction.member?.roles as string[] | undefined;
-    if (!roles || !roles.includes(env('DEV_ROLE_ID'))) {
+    const member = interaction.member as GuildMember;
+    const roles = member.roles.cache;
+
+    if (!roles || !roles.has(env('DEV_ROLE_ID'))) {
       await interaction.reply({
-        content: '❌ You do not have permission to use this command.',
+        content:
+          '☹️ Sorry, but you do not have permission to use this command.',
         flags: [MessageFlags.Ephemeral],
       });
       return;
@@ -84,18 +91,18 @@ const handler = {
       switch (subcommand) {
         case 'find':
           githubCommand.issues.find(interaction);
-          break;
+          return;
         case 'create':
           githubCommand.issues.create(interaction);
-          break;
+          return;
         case 'lookup':
           githubCommand.issues.lookup(interaction);
-          break;
+          return;
         case 'update':
           githubCommand.issues.update(interaction);
-          break;
+          return;
         default:
-          break;
+          return;
       }
     }
 
@@ -103,21 +110,21 @@ const handler = {
       switch (subcommand) {
         case 'merge':
           githubCommand.pr.merge(interaction);
-          break;
+          return;
         case 'lookup':
           githubCommand.pr.lookup(interaction);
-          break;
+          return;
         case 'create':
           githubCommand.pr.create(interaction);
-          break;
+          return;
         case 'find':
           githubCommand.pr.find(interaction);
-          break;
+          return;
         case 'update':
           githubCommand.pr.update(interaction);
-          break;
+          return;
         default:
-          break;
+          return;
       }
     }
 
