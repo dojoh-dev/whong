@@ -20,6 +20,10 @@ export const update = async (
     | 'closed'
     | undefined;
 
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   try {
     const { data } = await octokit.rest.issues.update({
       owner: owner!,
@@ -34,15 +38,14 @@ export const update = async (
       state: state || undefined,
     });
 
-    await interaction.reply(
-      `Issue [#${data.number}](${data.html_url}) updated! 🎉`,
-    );
+    await interaction.followUp({
+      content: `Issue [#${data.number}](${data.html_url}) updated! 🎉`,
+    });
   } catch (e) {
     console.error('Error updating issue:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error updating the issue',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

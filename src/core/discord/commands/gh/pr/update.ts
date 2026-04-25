@@ -19,6 +19,10 @@ export const update = async (
     | 'closed'
     | undefined;
 
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   try {
     const { data } = await octokit.rest.pulls.update({
       owner: owner!,
@@ -30,15 +34,15 @@ export const update = async (
       state: state || undefined,
     });
 
-    await interaction.reply(
-      `PR [#${data.number}](${data.html_url}) updated! 🎉`,
-    );
+    await interaction.followUp({
+      ephemeral: false,
+      content: `PR [#${data.number}](${data.html_url}) updated! 🎉`,
+    });
   } catch (e) {
     console.error('Error updating PR:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error updating the PR',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

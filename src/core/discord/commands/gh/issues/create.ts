@@ -21,6 +21,10 @@ export const create = async (
     repo: repo!,
   };
 
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   try {
     const { data } = await octokit.rest.issues.create({
       ...payload,
@@ -33,13 +37,13 @@ export const create = async (
         : [],
     });
 
-    await interaction.reply(
-      `Issue [#${data.number}](${data.html_url}) created! 🎉`,
-    );
+    await interaction.followUp({
+      content: `Issue [#${data.number}](${data.html_url}) created! 🎉`,
+    });
   } catch (e) {
     console.error('Error creating issue:', e);
 
-    await interaction.reply({
+    await interaction.followUp({
       content: '❌ Sorry, there was an error creating the issue',
       flags: [MessageFlags.Ephemeral],
     });

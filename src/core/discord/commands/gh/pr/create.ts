@@ -7,6 +7,10 @@ import type { CacheType, ChatInputCommandInteraction } from 'discord.js';
 export const create = async (
   interaction: ChatInputCommandInteraction<CacheType>,
 ) => {
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   const repoFullname = interaction.options.getString('repo', true);
   const [owner, repo] = repoFullname.split('/');
 
@@ -16,15 +20,10 @@ export const create = async (
     base: interaction.options.getString('base', true),
     body: interaction.options.getString('body', false) || '',
     tags: interaction.options.getString('tags', false) || '',
-    assignees: (
-      interaction.options.getString('assignees', false) ||
-      interaction.user.username
-    )
+    assignees: (interaction.options.getString('assignees', false) || '')
       .split(',')
       .map((assignee) => assignee.trim()),
-    reviewers: (
-      interaction.options.getString('reviewers', false) || 'itssimmons'
-    )
+    reviewers: (interaction.options.getString('reviewers', false) || '')
       .split(',')
       .map((reviewer) => reviewer.trim()),
     owner: owner!,
@@ -44,15 +43,15 @@ export const create = async (
       reviewers: reviewers.length > 0 ? reviewers : undefined,
     });
 
-    await interaction.reply(
-      `PR [#${data.number}](${data.html_url}) created! 🎉`,
-    );
+    await interaction.followUp({
+      ephemeral: false,
+      content: `PR [#${data.number}](${data.html_url}) created! 🎉`,
+    });
   } catch (e) {
     console.error('Error creating PR:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error creating the PR',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

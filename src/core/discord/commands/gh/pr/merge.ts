@@ -16,6 +16,10 @@ export const merge = async (
     | 'squash'
     | 'rebase';
 
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   try {
     const { data } = await octokit.rest.pulls.merge({
       owner: owner!,
@@ -25,22 +29,20 @@ export const merge = async (
     });
 
     if (!data.merged) {
-      await interaction.reply({
+      await interaction.followUp({
         content: `😔 PR #${prNumber} could not be merged. Reason: ${data.message}`,
-        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
 
-    await interaction.reply(
-      `PR #${prNumber} merged successfully using the **${strategy}** strategy! 🎉`,
-    );
+    await interaction.followUp({
+      content: `PR #${prNumber} merged successfully using the **${strategy}** strategy! 🎉`,
+    });
   } catch (e) {
     console.error('Error merging PR:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error merging the PR',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

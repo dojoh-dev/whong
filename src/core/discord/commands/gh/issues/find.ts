@@ -10,47 +10,53 @@ export const find = async (
 
   if (issueNumber <= 0 && !repoFullname) return;
 
-  const [owner, repo] = repoFullname.split('/');
-  const { data: issue } = await octokit.rest.issues.get({
-    issue_number: issueNumber,
-    owner: owner!,
-    repo: repo!,
+  await interaction.deferReply({
+    ephemeral: true,
   });
 
-  let labels = 'None';
+  const [owner, repo] = repoFullname.split('/');
 
-  if (issue.labels && issue.labels.length > 0) {
-    labels = issue.labels
-      .map((label) => {
-        if (typeof label === 'string') {
-          return label;
-        } else {
-          return label.name;
-        }
-      })
-      .join(', ');
-  }
+  try {
+    const { data: issue } = await octokit.rest.issues.get({
+      issue_number: issueNumber,
+      owner: owner!,
+      repo: repo!,
+    });
 
-  let assignees = 'None';
+    let labels = 'None';
 
-  if (issue.assignees && issue.assignees.length > 0) {
-    assignees = issue.assignees
-      .map((assignee) => `@${assignee.login}`)
-      .join(', ');
-  }
+    if (issue.labels && issue.labels.length > 0) {
+      labels = issue.labels
+        .map((label) => {
+          if (typeof label === 'string') {
+            return label;
+          } else {
+            return label.name;
+          }
+        })
+        .join(', ');
+    }
 
-  let body = '> *No description provided.*';
+    let assignees = 'None';
 
-  if (issue.body) {
-    body = issue.body.split('\n').join('\n> ');
-    body = body.endsWith('\n> ') ? body.slice(0, -3) : body;
-  }
+    if (issue.assignees && issue.assignees.length > 0) {
+      assignees = issue.assignees
+        .map((assignee) => `@${assignee.login}`)
+        .join(', ');
+    }
 
-  const createdAt = new Date(issue.created_at).toDateString();
+    let body = '> *No description provided.*';
 
-  const user = issue.user ? `@${issue.user.login}` : 'Unknown';
+    if (issue.body) {
+      body = issue.body.split('\n').join('\n> ');
+      body = body.endsWith('\n> ') ? body.slice(0, -3) : body;
+    }
 
-  await interaction.reply(`## Issue [#${issue.number}](${issue.html_url})
+    const createdAt = new Date(issue.created_at).toDateString();
+
+    const user = issue.user ? `@${issue.user.login}` : 'Unknown';
+
+    await interaction.followUp(`## Issue [#${issue.number}](${issue.html_url})
 **Title:** ${issue.title}
 **State:** ${issue.state}
 **Assignees:** ${assignees}
@@ -59,4 +65,11 @@ export const find = async (
 **Created At:** ${createdAt}
 
 > ${body}`);
+  } catch (e) {
+    console.error('Error fetching issue:', e);
+
+    await interaction.followUp({
+      content: '❌ Sorry, there was an error fetching the issue',
+    });
+  }
 };

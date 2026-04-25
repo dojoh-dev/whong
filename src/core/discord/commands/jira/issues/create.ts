@@ -8,13 +8,16 @@ import type { CacheType, ChatInputCommandInteraction } from 'discord.js';
 export const create = async (
   interaction: ChatInputCommandInteraction<CacheType>,
 ) => {
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   const assigneeSearch = await jira.user.search(interaction.user.displayName);
 
   if (assigneeSearch.length === 0) {
-    await interaction.reply({
+    await interaction.followUp({
       content:
         "❌ Sorry, I couldn't find your Jira account to assign the issue to you. Please make sure your Discord display name matches your Jira account name.",
-      flags: [MessageFlags.Ephemeral],
     });
     return;
   }
@@ -54,15 +57,14 @@ export const create = async (
 
     const issueUrl = `https://${env('JIRA_DOMAIN')}.atlassian.net/browse/${response.key}`;
 
-    await interaction.reply({
+    await interaction.followUp({
       content: `Issue [${response.key}](${issueUrl}) created! 🎉`,
     });
   } catch (e) {
     console.error('Error creating Jira issue:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error creating the Jira issue',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

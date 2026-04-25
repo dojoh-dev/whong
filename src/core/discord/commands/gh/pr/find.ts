@@ -7,6 +7,10 @@ import type { CacheType, ChatInputCommandInteraction } from 'discord.js';
 export const find = async (
   interaction: ChatInputCommandInteraction<CacheType>,
 ) => {
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   const prNumber = interaction.options.getNumber('id', true);
   const repoFullname = interaction.options.getString('repo', true);
 
@@ -59,7 +63,8 @@ export const find = async (
     const createdAt = new Date(pr.created_at).toDateString();
     const user = pr.user ? `@${pr.user.login}` : 'Unknown';
 
-    await interaction.reply(`## PR [#${pr.number}](${pr.html_url})
+    await interaction.followUp({
+      content: `## PR [#${pr.number}](${pr.html_url})
 **Title:** ${pr.title}
 **State:** ${pr.state}
 **Labels:** ${tags}
@@ -68,13 +73,13 @@ export const find = async (
 **Author:** ${user}
 **Created At:** ${createdAt}
 
-> ${body}`);
+> ${body}`,
+    });
   } catch (e) {
     console.error('Error fetching PR:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error fetching the PR',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

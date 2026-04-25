@@ -15,13 +15,16 @@ export const lookup = async (
   const status = interaction.options.getString('status', false);
   const direction = interaction.options.getString('direction', false) || 'DESC';
 
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   try {
     const assigneeSearch = await jira.user.search(assigneeName);
 
     if (assigneeSearch.length === 0) {
-      await interaction.reply({
+      await interaction.followUp({
         content: `❌ Sorry, I couldn't find a Jira account matching "${assigneeName}". Please make sure the name matches a Jira user.`,
-        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
@@ -47,16 +50,15 @@ export const lookup = async (
       )
       .join('\n');
 
-    await interaction.reply({
+    await interaction.followUp({
       content: `Here are the ${response.issues.length} most recent issue(s) assigned to **${assigneeName}**:\n\n${issueList}`,
       flags: [MessageFlags.SuppressEmbeds],
     });
   } catch (e) {
     console.error('Error fetching assigned Jira issues:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error fetching the assigned Jira issues',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };

@@ -11,6 +11,10 @@ export const find = async (
 ) => {
   const issueKey = interaction.options.getString('id', true);
 
+  await interaction.deferReply({
+    flags: [MessageFlags.Ephemeral],
+  });
+
   try {
     const response = await jira.issue.get(issueKey);
 
@@ -20,7 +24,7 @@ export const find = async (
 
     const createdAt = new Date(response.fields.created).toDateString();
 
-    await interaction.reply(`## [${response.key}] ${response.fields.summary}
+    await interaction.followUp(`## [${response.key}] ${response.fields.summary}
 **Status:** \`${response.fields.status.name}\`
 **Assignee:** ${assignee}
 **Reporter:** ${response.fields.reporter.displayName}
@@ -31,9 +35,8 @@ ${jiraToDiscord(response.fields.description)}`);
   } catch (e) {
     console.error('Error fetching Jira issue:', e);
 
-    await interaction.reply({
+    await interaction.editReply({
       content: '❌ Sorry, there was an error fetching the Jira issue',
-      flags: [MessageFlags.Ephemeral],
     });
   }
 };
