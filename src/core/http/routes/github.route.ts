@@ -4,7 +4,7 @@ import { verifySignature } from '@/services/github/webhook/signature';
 import type { FastifyPluginCallback } from 'fastify';
 
 const plugin: FastifyPluginCallback = (f, opts, done) => {
-  f.post('/webhook', async (req, reply) => {
+  f.post('/webhook', { config: { rawBody: true } }, async (req, reply) => {
     const signature = req.headers['x-hub-signature-256'] as string;
     const event = req.headers['x-github-event'] as string;
 
