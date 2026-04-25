@@ -1,9 +1,7 @@
 import Fastify from 'fastify';
 
-export const build = async () => {
-  const app = Fastify({
-    logger: true,
-  });
+export const build = async (opts = { logger: true }) => {
+  const app = Fastify(opts);
 
   await app.register(import('fastify-raw-body'), {
     field: 'rawBody',
@@ -12,19 +10,12 @@ export const build = async () => {
     runFirst: true,
   });
 
-  await app.register(async (instance) => {
-    const routes = await import('@/core/http/routes/health.route');
-    routes.default(instance);
+  await app.register(import('@/core/http/routes/health.route'));
+  await app.register(import('@/core/http/routes/github.route'), {
+    prefix: '/github',
   });
-  await app.register(
-    async (instance) => {
-      const routes = await import('@/core/http/routes/github.route');
-      routes.default(instance);
-    },
-    {
-      prefix: '/github',
-    },
-  );
+
+  await app.ready();
 
   return app;
 };

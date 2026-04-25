@@ -1,10 +1,10 @@
 import handleEvent from '@/services/github/webhook/events';
 import { verifySignature } from '@/services/github/webhook/signature';
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyPluginCallback } from 'fastify';
 
-export default async function (f: FastifyInstance) {
-  f.post('webhook', async (req, reply) => {
+const plugin: FastifyPluginCallback = (f, opts, done) => {
+  f.post('/webhook', async (req, reply) => {
     const signature = req.headers['x-hub-signature-256'] as string;
     const event = req.headers['x-github-event'] as string;
 
@@ -29,4 +29,8 @@ export default async function (f: FastifyInstance) {
 
     return reply.status(200).send('ok');
   });
-}
+
+  done();
+};
+
+export default plugin;
