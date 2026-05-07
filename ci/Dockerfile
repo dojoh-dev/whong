@@ -5,7 +5,9 @@ WORKDIR /bot
 COPY pnpm-lock.yaml ./
 COPY package.json ./
 
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+ENV HUSKY=0
+
+RUN npm install -g pnpm && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
